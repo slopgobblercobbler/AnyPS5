@@ -16,6 +16,7 @@
 #include <utility>
 
 static void Require(bool value) { if (!value) std::abort(); }
+static inline int scePadSetAngularVelocityDeadband(int handle, bool enable) { return scePadSetAngularVelocityDeadbandState(handle, enable); }
 
 static void CheckInputCommands() {
     const auto path = std::filesystem::temp_directory_path() / ("anyps5-pad-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
@@ -146,6 +147,18 @@ static void CheckAngularVelocityDeadband(int handle) {
     Require(scePadReadState(handle, &data) == PAD_OK);
     Require(data.angular_velocity_x == 0.01f && data.angular_velocity_z == -0.017f);
     PadPublishInput_nid_postfix(PadInputState{});
+    Require(scePadSetAngularVelocityDeadband(handle, true) == PAD_OK);
+    Require(scePadSetAngularVelocityDeadband(handle, false) == PAD_OK);
+    Require(scePadSetAngularVelocityDeadbandState(handle, true) == PAD_OK);
+    Require(scePadSetAngularVelocityDeadbandState(handle, false) == PAD_OK);
+    for (const int invalidHandle : {-9999, -100, -2, -1, 0, handle + 1, handle + 99, 1000}) {
+        Require(scePadSetAngularVelocityDeadband(invalidHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadband(invalidHandle, false) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(invalidHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(invalidHandle, false) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityBiasCorrectionState(invalidHandle, false) == PAD_ERROR_INVALID_HANDLE);
+    }
+    Require(scePadSetAngularVelocityBiasCorrectionState(handle, false) == PAD_OK);
 }
 
 static void CheckStickDeadZones(int handle) {
@@ -476,7 +489,16 @@ static void CheckSpecialPort(int user, int handle) {
     Require(scePadSetLightBar(special, &lightBar) == PAD_OK);
     Require(scePadResetLightBar(special) == PAD_OK);
     Require(scePadSetMotionSensorState(special, true) == PAD_OK);
+    Require(scePadSetAngularVelocityDeadband(special, true) == PAD_OK);
+    Require(scePadSetAngularVelocityDeadband(special, false) == PAD_OK);
     Require(scePadSetAngularVelocityDeadbandState(special, true) == PAD_OK);
+    Require(scePadSetAngularVelocityDeadbandState(special, false) == PAD_OK);
+    for (const int invalidHandle : {-9999, -100, -2, -1, 0, special + 1, special + 99, 1000}) {
+        Require(scePadSetAngularVelocityDeadband(invalidHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadband(invalidHandle, false) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(invalidHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(invalidHandle, false) == PAD_ERROR_INVALID_HANDLE);
+    }
     Require(scePadSetTiltCorrectionState(special, true) == PAD_OK);
     Require(scePadResetOrientation(special) == PAD_OK);
     Require(scePadReadState(handle, data) == PAD_OK);
@@ -486,6 +508,16 @@ static void CheckSpecialPort(int user, int handle) {
     Require(scePadClose_nid_postfix(special) == PAD_OK);
     Require(scePadGetHandle(user, PAD_PORT_TYPE_SPECIAL, 0) == noHandle);
     Require(scePadClose_nid_postfix(special) == PAD_ERROR_INVALID_HANDLE);
+    Require(scePadSetAngularVelocityDeadband(special, true) == PAD_ERROR_INVALID_HANDLE);
+    Require(scePadSetAngularVelocityDeadband(special, false) == PAD_ERROR_INVALID_HANDLE);
+    Require(scePadSetAngularVelocityDeadbandState(special, true) == PAD_ERROR_INVALID_HANDLE);
+    Require(scePadSetAngularVelocityDeadbandState(special, false) == PAD_ERROR_INVALID_HANDLE);
+    for (const int invalidHandle : {-9999, -100, -2, -1, 0, special, special + 1, special + 99, 1000}) {
+        Require(scePadSetAngularVelocityDeadband(invalidHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadband(invalidHandle, false) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(invalidHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(invalidHandle, false) == PAD_ERROR_INVALID_HANDLE);
+    }
     Require(scePadRead_nid_postfix(special, data, 1) == PAD_ERROR_INVALID_HANDLE);
     Require(scePadReadState(special, data) == PAD_ERROR_INVALID_HANDLE);
     Require(scePadGetControllerInformation(special, &info) == PAD_ERROR_INVALID_HANDLE);
@@ -892,6 +924,13 @@ int main() {
     Require(!scePadIsValidHandle(PAD_HANDLE, PAD_PORT_TYPE_STANDARD));
     const PadVibrationParam earlyVibration{1, 2};
     for (const PadVibrationParam* param : {static_cast<const PadVibrationParam*>(nullptr), &earlyVibration}) Require(scePadSetVibrationForce(PAD_HANDLE, param) == PAD_ERROR_NOT_INITIALIZED);
+    for (const int uninitHandle : {-9999, -100, -2, -1, 0, 1, 2, 3, 4, 5, 99, 1000}) {
+        Require(scePadSetAngularVelocityDeadband(uninitHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadband(uninitHandle, false) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(uninitHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(uninitHandle, false) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityBiasCorrectionState(uninitHandle, false) == PAD_ERROR_INVALID_HANDLE);
+    }
     Pad::SetLightBar(0, true, 1, 2, 3);
     Require(scePadResetLightBarAll() == PAD_OK && LightBarIs(0, true, 1, 2, 3));
     Require(scePadResetLightBarAllByPortType(3) == PAD_ERROR_INVALID_ARG && scePadResetLightBarAllByPortType(PAD_PORT_TYPE_STANDARD) == PAD_OK && LightBarIs(0, true, 1, 2, 3));
@@ -963,6 +1002,12 @@ int main() {
     Require(initInfo.padTypeInfo[1].connectPort == 1);
     PadSetPortConnected_nid_postfix(1, false);
     Require(scePadUnknown_n3kSX62fgNo() == PAD_OK);
+    for (const int unassignedHandle : {-9999, -100, -2, -1, 0, 1, 2, 3, 4, 5, 99, 1000}) {
+        Require(scePadSetAngularVelocityDeadband(unassignedHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadband(unassignedHandle, false) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(unassignedHandle, true) == PAD_ERROR_INVALID_HANDLE);
+        Require(scePadSetAngularVelocityDeadbandState(unassignedHandle, false) == PAD_ERROR_INVALID_HANDLE);
+    }
     const int handle = scePadOpen_nid_postfix(user, 0, 0, nullptr);
     Require(handle > 0);
     Require(scePadUnknown_n3kSX62fgNo() == PAD_OK);
