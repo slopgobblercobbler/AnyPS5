@@ -326,4 +326,14 @@ if(BUILD_TESTING)
         set_tests_properties(audio_out2_context_handles PROPERTIES ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceAudioOut>")
     endif()
+
+    add_test_executable(guest_audio_out_tests ${LIBS_INCLUDE_DIR}/tests/GuestAudioOut.cpp)
+    target_include_directories(guest_audio_out_tests PRIVATE ${LIBS_INCLUDE_DIR})
+    target_link_libraries(guest_audio_out_tests PRIVATE libSceAudioOut libc)
+    configure_windows_unwind(guest_audio_out_tests)
+    add_test(NAME guest_audio_out COMMAND guest_audio_out_tests)
+    if(WIN32)
+        set_tests_properties(guest_audio_out PROPERTIES ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceAudioOut>")
+    endif()
 endif()
