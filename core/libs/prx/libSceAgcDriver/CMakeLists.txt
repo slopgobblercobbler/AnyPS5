@@ -911,6 +911,23 @@ if(BUILD_TESTING AND ANYPS5_ENABLE_SPIRV_TOOLS)
     endif()
 endif()
 
+add_test_executable(agc_driver_pm4_packet_bounds_tests EXCLUDE_FROM_ALL
+        ${CMAKE_SOURCE_DIR}/core/agc/tests/AgcPacketBoundsTests.cpp
+)
+target_include_directories(agc_driver_pm4_packet_bounds_tests PRIVATE
+        ${LIBS_INCLUDE_DIR}
+)
+target_link_libraries(agc_driver_pm4_packet_bounds_tests PRIVATE
+        libSceAgcDriver
+        libc
+)
+set_target_properties(agc_driver_pm4_packet_bounds_tests PROPERTIES CXX_EXTENSIONS OFF)
+configure_windows_unwind(agc_driver_pm4_packet_bounds_tests)
+
+if(BUILD_TESTING)
+    agc_add_default_test(agc_driver_pm4_packet_bounds_tests)
+endif()
+
 if(BUILD_TESTING)
     get_directory_property(agcRegisteredTests TESTS)
     list(FILTER agcRegisteredTests EXCLUDE REGEX "^(agc_pipeline_journal(_long_paths|_extended_paths)?|agc_driver_pipeline_journal|agc_pipeline_store_replay_growth)$")

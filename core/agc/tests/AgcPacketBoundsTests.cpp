@@ -162,7 +162,7 @@ void TestReservedHeaderType2() {
     Require(!AgcDriver::Pm4::Predicated(0xffff1001u));
 }
 
-void TestInvalidHeaderTypes4To7() {
+void TestType1HighNibbleHeaderPatterns() {
     for (const std::uint32_t nibble : {0x40000000u, 0x50000000u, 0x60000000u, 0x70000000u}) {
         const auto nopPacket = std::array<std::uint32_t, 2>{nibble | (OpcodeNop << 8u), 0u};
         ExpectFailure([&] { AgcDriver::Pm4::Validate(nopPacket, 0u); });
@@ -344,7 +344,7 @@ int main() {
     TestReservedHeaderType0();
     TestReservedHeaderType1();
     TestReservedHeaderType2();
-    TestInvalidHeaderTypes4To7();
+    TestType1HighNibbleHeaderPatterns();
     TestZeroCountPayloads();
     TestPayloadCountMismatchBounds();
     TestExecutionStatePreservation();
