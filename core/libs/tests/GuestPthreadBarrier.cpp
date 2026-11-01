@@ -69,6 +69,21 @@ static void DestroyWhileWaiting() {
 
 int main() {
     DestroyWhileWaiting();
+    PthreadBarrierPrivate* nullBarrier = nullptr;
+    Require(pthread_barrier_wait_nid_postfix(nullptr) == GUEST_EINVAL);
+    Require(pthread_barrier_wait_nid_postfix(&nullBarrier) == GUEST_EINVAL);
+
+    PthreadBarrierPrivate* destroyedBarrier = nullptr;
+    Require(pthread_barrier_init_nid_postfix(&destroyedBarrier, nullptr, 1) == 0 && destroyedBarrier != nullptr);
+    Require(pthread_barrier_destroy_nid_postfix(&destroyedBarrier) == 0 && destroyedBarrier == nullptr);
+    Require(pthread_barrier_wait_nid_postfix(&destroyedBarrier) == GUEST_EINVAL);
+
+    Require(pthread_barrier_init_nid_postfix(&destroyedBarrier, nullptr, 4) == 0 && destroyedBarrier != nullptr);
+    Require(pthread_barrier_destroy_nid_postfix(&destroyedBarrier) == 0 && destroyedBarrier == nullptr);
+    for (int i = 0; i < 5; ++i) {
+        Require(pthread_barrier_wait_nid_postfix(&destroyedBarrier) == GUEST_EINVAL);
+    }
+
     PthreadBarrierattrPrivate* missing = nullptr;
     int pshared = -1;
     Require(pthread_barrierattr_init_nid_postfix(nullptr) == GUEST_EINVAL);
@@ -137,6 +152,22 @@ int main() {
     Require(pthread_barrier_init_nid_postfix(&single, &attr, 1) == 0);
     Require(pthread_barrier_wait_nid_postfix(&single) == BARRIER_SERIAL_THREAD);
     Require(pthread_barrier_wait_nid_postfix(&single) == BARRIER_SERIAL_THREAD);
-    Require(pthread_barrier_destroy_nid_postfix(&single) == 0);
+    Require(pthread_barrier_destroy_nid_postfix(&single) == 0 && single == nullptr);
+    Require(pthread_barrier_wait_nid_postfix(&single) == GUEST_EINVAL);
     Require(pthread_barrierattr_destroy_nid_postfix(&attr) == 0);
+
+    std::array<std::thread, 4> concurrentWaiters;
+    std::atomic<int> concurrentFailures{0};
+    for (auto& thread : concurrentWaiters) {
+        thread = std::thread([&] {
+            PthreadBarrierPrivate* uninit = nullptr;
+            if (pthread_barrier_wait_nid_postfix(&uninit) == GUEST_EINVAL) {
+                ++concurrentFailures;
+            }
+        });
+    }
+    for (auto& thread : concurrentWaiters) {
+        thread.join();
+    }
+    Require(concurrentFailures.load() == 4);
 }
