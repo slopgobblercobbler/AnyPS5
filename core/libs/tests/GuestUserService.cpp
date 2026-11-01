@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <initializer_list>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -148,6 +149,29 @@ int main() {
         Require(setting.get(USER_SERVICE_INITIAL_USER_ID, &value) == USER_SERVICE_OK);
         Require(value == setting.value);
     }
+
+    for (const int userId : {USER_SERVICE_USER_ID_INVALID,
+                             0,
+                             1,
+                             123,
+                             -1,
+                             -2,
+                             -100,
+                             0x12345678,
+                             USER_SERVICE_INITIAL_USER_ID - 1,
+                             USER_SERVICE_INITIAL_USER_ID + 1,
+                             USER_SERVICE_INITIAL_USER_ID + 2,
+                             USER_SERVICE_INITIAL_USER_ID + 3,
+                             USER_SERVICE_INITIAL_USER_ID + 4,
+                             USER_SERVICE_INITIAL_USER_ID + 100,
+                             -2147483647 - 1,
+                             2147483647}) {
+        std::int32_t chatTranscription = 0x5a5a;
+        Require(sceUserServiceGetAccessibilityChatTranscription(userId, nullptr) == USER_SERVICE_ERROR_NOT_LOGGED_IN);
+        Require(sceUserServiceGetAccessibilityChatTranscription(userId, &chatTranscription) == USER_SERVICE_ERROR_NOT_LOGGED_IN);
+        Require(chatTranscription == 0x5a5a);
+    }
+
     int initialUser = -1;
     Require(sceUserServiceGetInitialUser(nullptr) == USER_SERVICE_ERROR_INVALID_ARGUMENT);
     Require(sceUserServiceGetInitialUser(&initialUser) == USER_SERVICE_OK && initialUser == USER_SERVICE_INITIAL_USER_ID);
@@ -172,6 +196,46 @@ int main() {
         threwZoom = true;
     }
     Require(threwZoom);
+
+    bool threwSetLang = false;
+    try {
+        sceUserServiceSetPartyChatTranscriptionLanguageType();
+    } catch (const std::runtime_error&) {
+        threwSetLang = true;
+    }
+    Require(threwSetLang);
+
+    bool threwSetFlag = false;
+    try {
+        sceUserServiceSetPartyChatTranscriptionFlag();
+    } catch (const std::runtime_error&) {
+        threwSetFlag = true;
+    }
+    Require(threwSetFlag);
+
+    bool threwSetVoice = false;
+    try {
+        sceUserServiceSetPartyChatTranscriptionVoiceType();
+    } catch (const std::runtime_error&) {
+        threwSetVoice = true;
+    }
+    Require(threwSetVoice);
+
+    bool threwGetLang = false;
+    try {
+        sceUserServiceGetPartyChatTranscriptionLanguageType();
+    } catch (const std::runtime_error&) {
+        threwGetLang = true;
+    }
+    Require(threwGetLang);
+
+    bool threwGetFlag = false;
+    try {
+        sceUserServiceGetPartyChatTranscriptionFlag();
+    } catch (const std::runtime_error&) {
+        threwGetFlag = true;
+    }
+    Require(threwGetFlag);
 
     char name[32]{};
     Require(sceUserServiceGetUserName(USER_SERVICE_INITIAL_USER_ID, nullptr, sizeof(name)) == USER_SERVICE_ERROR_INVALID_ARGUMENT);
@@ -254,5 +318,23 @@ int main() {
         Require(setting.get(USER_SERVICE_INITIAL_USER_ID + 1, &value) == USER_SERVICE_ERROR_NOT_LOGGED_IN);
         Require(value == 0x5a5a5a5a);
         Require(setting.get(USER_SERVICE_INITIAL_USER_ID + 1, nullptr) == USER_SERVICE_ERROR_NOT_LOGGED_IN);
+    }
+
+    for (int userIndex = 1; userIndex < USER_SERVICE_MAX_USERS; ++userIndex) {
+        const int userId = USER_SERVICE_INITIAL_USER_ID + userIndex;
+        UserServiceSetUserConnected_nid_postfix(userIndex, true);
+
+        Require(sceUserServiceGetAccessibilityChatTranscription(userId, nullptr) == USER_SERVICE_ERROR_INVALID_ARGUMENT);
+
+        std::int32_t activeTranscription = -1;
+        Require(sceUserServiceGetAccessibilityChatTranscription(userId, &activeTranscription) == USER_SERVICE_OK);
+        Require(activeTranscription == 0);
+
+        UserServiceSetUserConnected_nid_postfix(userIndex, false);
+
+        std::int32_t unloggedTranscription = 0x5a5a;
+        Require(sceUserServiceGetAccessibilityChatTranscription(userId, nullptr) == USER_SERVICE_ERROR_NOT_LOGGED_IN);
+        Require(sceUserServiceGetAccessibilityChatTranscription(userId, &unloggedTranscription) == USER_SERVICE_ERROR_NOT_LOGGED_IN);
+        Require(unloggedTranscription == 0x5a5a);
     }
 }
