@@ -359,6 +359,33 @@ int main() {
             Require(reader.TranslateVirtualAddress(0x101f) == 0x25f);
             RejectAddress(Fixture(), 0x1020);
         }},
+        {"DT_STRSZ overflow", [] {
+            constexpr std::uint64_t sizes[] = {
+                std::numeric_limits<std::uint64_t>::max(),
+                std::numeric_limits<std::uint64_t>::max() - 15,
+                std::numeric_limits<std::uint64_t>::max() - 0x200,
+                0x100000000ull,
+            };
+            for (const std::uint64_t size : sizes) {
+                auto bytes = Fixture();
+                Write<std::uint64_t>(bytes, 288, size);
+                RejectSections(std::move(bytes));
+            }
+        }},
+        {"unaligned DT_STRTAB pointers", [] {
+            for (const std::uint64_t offset : {0x2f5ull, 0x2ffull, std::numeric_limits<std::uint64_t>::max() - 1, std::numeric_limits<std::uint64_t>::max() - 5}) {
+                auto bytes = Fixture();
+                Write<std::uint64_t>(bytes, 280, offset);
+                RejectSections(std::move(bytes));
+            }
+        }},
+        {"string table offset exceeding DT_STRSZ", [] {
+            for (const std::uint32_t offset : {17u, 18u, 0xffffu, std::numeric_limits<std::uint32_t>::max()}) {
+                auto bytes = Fixture();
+                Write<std::uint32_t>(bytes, 192, offset);
+                RejectSections(std::move(bytes));
+            }
+        }},
     };
     std::size_t failures = 0;
     for (const auto& [name, test] : cases) {
