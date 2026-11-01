@@ -485,6 +485,10 @@ int main() {
     PthreadRwlockattr attr = nullptr;
     Require(pthread_rwlockattr_init_nid_postfix(&attr) == 0);
     Require(attr != nullptr);
+    Require(Throws([] { pthread_rwlock_init_nid_postfix(nullptr, nullptr); }));
+    Require(Throws([&] { pthread_rwlock_init_nid_postfix(nullptr, &attr); }));
+    Require(Throws([] { pthread_rwlock_destroy_nid_postfix(nullptr); }));
+    Require(Throws([] { pthread_rwlock_tryrdlock_nid_postfix(nullptr); }));
     PthreadRwlock withAttr = nullptr;
     Require(pthread_rwlock_init_nid_postfix(&withAttr, &attr) == 0);
     Require(pthread_rwlock_wrlock_nid_postfix(&withAttr) == 0);
