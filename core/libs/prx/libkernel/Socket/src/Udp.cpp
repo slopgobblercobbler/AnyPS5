@@ -1727,6 +1727,8 @@ int APS5_VABI ioctl_nid_postfix(int descriptor, std::uint64_t request, void* arg
         const std::size_t totalBytes = entries.size() * sizeof(GuestIfreq);
         if (ifc.ifcu_buf == nullptr) {
             ifc.ifc_len = static_cast<std::int32_t>(totalBytes);
+            const GuestArena::HostWrite guard(argument, sizeof(ifc));
+            if (!guard.Open()) return Fail(14);
             if (!GuestCopyOut_nid_no_patch(argument, &ifc, sizeof(ifc))) return Fail(14);
             return 0;
         }
@@ -1741,6 +1743,8 @@ int APS5_VABI ioctl_nid_postfix(int descriptor, std::uint64_t request, void* arg
             if (!GuestCopyIn_nid_no_patch(&probe, ifc.ifcu_buf, 1)) return Fail(14);
         }
         ifc.ifc_len = static_cast<std::int32_t>(bytesToWrite);
+        const GuestArena::HostWrite guard(argument, sizeof(ifc));
+        if (!guard.Open()) return Fail(14);
         if (!GuestCopyOut_nid_no_patch(argument, &ifc, sizeof(ifc))) return Fail(14);
         return 0;
     }
@@ -1749,6 +1753,8 @@ int APS5_VABI ioctl_nid_postfix(int descriptor, std::uint64_t request, void* arg
     std::lock_guard lock(socket->modeMutex);
     if (request == 0x4004667f && socket->receiveShut) {
         int zero = 0;
+        const GuestArena::HostWrite guard(argument, sizeof(zero));
+        if (!guard.Open()) return Fail(14);
         if (!GuestCopyOut_nid_no_patch(argument, &zero, sizeof(zero))) return Fail(14);
         return 0;
     }
@@ -1769,6 +1775,8 @@ int APS5_VABI ioctl_nid_postfix(int descriptor, std::uint64_t request, void* arg
     if (request == 0x8004667e) socket->options.nonblocking = value != 0;
     if (request == 0x4004667f) {
         int available = static_cast<int>(value);
+        const GuestArena::HostWrite guard(argument, sizeof(available));
+        if (!guard.Open()) return Fail(14);
         if (!GuestCopyOut_nid_no_patch(argument, &available, sizeof(available))) return Fail(14);
     }
     return 0;

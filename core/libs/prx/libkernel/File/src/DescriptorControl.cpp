@@ -588,6 +588,8 @@ int Ioctl(int fd, std::uint64_t request, void* argument) {
         if (*kind != Kind::File && *kind != Kind::Pipe && *kind != Kind::Socket && *kind != Kind::ArchivedFile) Unsupported("ioctl", "FIONREAD", *kind, fd);
         const auto archived = File::ArchivedFileRemaining(fd);
         const int available = archived ? static_cast<int>(std::min<std::int64_t>(*archived, std::numeric_limits<int>::max())) : Readable(fd, *kind, "ioctl");
+        const GuestArena::HostWrite guard(argument, sizeof(available));
+        if (!guard.Open()) return Fail(GuestEfault);
         if (!GuestCopyOut_nid_no_patch(argument, &available, sizeof(available))) return Fail(GuestEfault);
         return 0;
     }
