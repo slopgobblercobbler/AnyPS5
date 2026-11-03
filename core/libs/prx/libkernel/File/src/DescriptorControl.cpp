@@ -591,7 +591,7 @@ int Ioctl(int fd, std::uint64_t request, void* argument) {
         if (!GuestCopyOut_nid_no_patch(argument, &available, sizeof(available))) return Fail(GuestEfault);
         return 0;
     }
-    if (((command >> 8) & 0xff) == TerminalGroup) return Fail(GuestEnotty);
+    if (((command >> 8) & 0xff) == TerminalGroup || command == 0xc0106924) return Fail(GuestEnotty);
     char hex[11];
     std::snprintf(hex, sizeof(hex), "0x%08X", command);
     Unsupported("ioctl", std::string("request ") + hex, *kind, fd);

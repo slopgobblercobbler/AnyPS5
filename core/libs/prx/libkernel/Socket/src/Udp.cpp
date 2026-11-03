@@ -78,6 +78,19 @@ int Fail(int error) { *__error_nid_postfix() = error; return -1; }
 constexpr int GuestSocketDescriptorLimit = 1024;
 constexpr int GuestPeek = 0x2;
 constexpr int GuestWaitAll = 0x40;
+
+struct GuestIfconf {
+    std::int32_t ifc_len;
+    std::int32_t _pad;
+    void* ifcu_buf;
+};
+static_assert(sizeof(GuestIfconf) == 16);
+
+struct GuestIfreq {
+    char ifr_name[16];
+    unsigned char ifru_addr[16];
+};
+static_assert(sizeof(GuestIfreq) == 32);
 constexpr int GuestDontWait = 0x80;
 constexpr int GuestNoSignal = 0x20000;
 constexpr int GuestSendFlags = GuestNoSignal | GuestDontWait;
@@ -1684,6 +1697,51 @@ int APS5_VABI ioctl_nid_postfix(int descriptor, std::uint64_t request, void* arg
         std::lock_guard registry(socketsMutex);
         if (command == 0x20006601) closeOnExecDescriptors.insert(descriptor);
         else closeOnExecDescriptors.erase(descriptor);
+        return 0;
+    }
+    if (command == 0xc0106924) {
+        if (!argument) return Fail(14);
+        GuestIfconf ifc{};
+        if (!GuestCopyIn_nid_no_patch(&ifc, argument, sizeof(ifc))) return Fail(14);
+        if (ifc.ifc_len < 0) return Fail(22);
+        if (ifc.ifc_len > 0 && ifc.ifcu_buf == nullptr) return Fail(14);
+        GuestInterfaceAddress* list = nullptr;
+        if (getifaddrs_nid_postfix(&list) != 0) {
+            const int err = *__error_nid_postfix();
+            return Fail(err != 0 ? err : 12);
+        }
+        std::vector<GuestIfreq> entries;
+        for (auto* item = list; item; item = item->next) {
+            if (!item->address) continue;
+            const auto* addr = static_cast<const unsigned char*>(item->address);
+            if (addr[1] != 2) continue;
+            GuestIfreq req{};
+            if (item->name) {
+                std::strncpy(req.ifr_name, item->name, sizeof(req.ifr_name) - 1);
+                req.ifr_name[sizeof(req.ifr_name) - 1] = '\0';
+            }
+            std::memcpy(req.ifru_addr, addr, sizeof(req.ifru_addr));
+            entries.push_back(req);
+        }
+        if (list) freeifaddrs_nid_postfix(list);
+        const std::size_t totalBytes = entries.size() * sizeof(GuestIfreq);
+        if (ifc.ifcu_buf == nullptr) {
+            ifc.ifc_len = static_cast<std::int32_t>(totalBytes);
+            if (!GuestCopyOut_nid_no_patch(argument, &ifc, sizeof(ifc))) return Fail(14);
+            return 0;
+        }
+        const std::size_t maxBytes = static_cast<std::size_t>(ifc.ifc_len);
+        const std::size_t bytesToWrite = std::min(maxBytes, totalBytes);
+        if (bytesToWrite > 0) {
+            const GuestArena::HostWrite guard(ifc.ifcu_buf, bytesToWrite);
+            if (!guard.Open()) return Fail(14);
+            if (!GuestCopyOut_nid_no_patch(ifc.ifcu_buf, entries.data(), bytesToWrite)) return Fail(14);
+        } else if (ifc.ifc_len > 0) {
+            char probe = 0;
+            if (!GuestCopyIn_nid_no_patch(&probe, ifc.ifcu_buf, 1)) return Fail(14);
+        }
+        ifc.ifc_len = static_cast<std::int32_t>(bytesToWrite);
+        if (!GuestCopyOut_nid_no_patch(argument, &ifc, sizeof(ifc))) return Fail(14);
         return 0;
     }
     if (!argument && (request & 0x1fff0000 || !(request & 0x20000000))) return Fail(14);
