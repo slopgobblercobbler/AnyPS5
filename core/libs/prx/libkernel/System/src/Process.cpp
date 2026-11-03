@@ -1207,14 +1207,17 @@ int APS5_VABI getrlimit_nid_postfix(int resource, GuestResourceLimit* limit) {
     return 0;
 }
 
+static bool MatchPriorityTarget(int which, int who) {
+    return which == guestPriorityUser ? (who == 0 ? getuid_nid_postfix() : who) == getuid_nid_postfix()
+                                      : who == 0 || who == getpid_nid_postfix();
+}
+
 int APS5_VABI getpriority_nid_postfix(int which, int who) {
     if (which != guestPriorityProcess && which != guestPriorityGroup && which != guestPriorityUser) {
         *__error_nid_postfix() = guestInvalid;
         return -1;
     }
-    const bool found = which == guestPriorityUser ? (who == 0 ? getuid_nid_postfix() : who) == getuid_nid_postfix()
-                                                  : who == 0 || who == getpid_nid_postfix();
-    if (!found) {
+    if (!MatchPriorityTarget(which, who)) {
         *__error_nid_postfix() = guestNoProcess;
         return -1;
     }
@@ -1226,9 +1229,7 @@ int APS5_VABI setpriority_nid_postfix(int which, int who, int niceval) {
         *__error_nid_postfix() = guestInvalid;
         return -1;
     }
-    const bool found = which == guestPriorityUser ? (who == 0 ? getuid_nid_postfix() : who) == getuid_nid_postfix()
-                                                  : who == 0 || who == getpid_nid_postfix();
-    if (!found) {
+    if (!MatchPriorityTarget(which, who)) {
         *__error_nid_postfix() = guestNoProcess;
         return -1;
     }
