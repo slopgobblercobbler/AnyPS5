@@ -147,7 +147,9 @@ std::shared_ptr<const ShaderRecompiler::RecompileResult> Driver::materializeDraw
                 for (const auto& [offset, value] : queue.context) std::fprintf(file, "context %x %08x\n", offset, value);
                 for (const auto& [offset, value] : queue.userConfig) std::fprintf(file, "uconfig %x %08x\n", offset, value);
                 for (const auto& [offset, value] : queue.shader) std::fprintf(file, "shader %x %08x\n", offset, value);
-                std::fclose(file);
+                if (std::fclose(file) != 0) {
+                    std::fprintf(stderr, "[gpu] could not close draw_slot1.regs\n");
+                }
             }
         }
         }

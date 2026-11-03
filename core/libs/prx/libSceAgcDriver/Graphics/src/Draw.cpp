@@ -3639,9 +3639,11 @@ void recordPreparedDraw(const Context& context, const State& state, const Pm4::D
         std::snprintf(name, sizeof(name), "target_%llx_%d.raw", static_cast<unsigned long long>(binding.color.address), dumped[binding.color.address]++);
         if (std::FILE* file = std::fopen(name, "wb")) {
             const std::uint32_t header[3] = {binding.color.extent.width, binding.color.extent.height, static_cast<std::uint32_t>(binding.color.format)};
-            std::fwrite(header, sizeof(header), 1, file);
-            std::fwrite(binding.dump->Bytes().data(), 1, binding.dump->Bytes().size(), file);
-            std::fclose(file);
+            const auto writtenHeader = std::fwrite(header, sizeof(header), 1, file);
+            const auto writtenBytes = std::fwrite(binding.dump->Bytes().data(), 1, binding.dump->Bytes().size(), file);
+            if (std::fclose(file) != 0 || writtenHeader != 1 || writtenBytes != binding.dump->Bytes().size()) {
+                std::fprintf(stderr, "[gpu] incomplete write to target dump file %s\n", name);
+            }
         }
     }
     APS5_LOG_CHARS_OUT_DEBUG("Shader resources WriteBack");

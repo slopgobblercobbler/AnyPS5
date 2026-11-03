@@ -92,10 +92,9 @@ std::string Driver::dumpRequest(std::uint64_t address, const ShaderRecompiler::R
         const auto text = ShaderRecompiler::RequestSerializer{}.Serialize(request);
         if (std::FILE* file = std::fopen(name.c_str(), "wb")) {
             const auto written = std::fwrite(text.data(), 1, text.size(), file);
-            const auto closed = std::fclose(file);
-            if (written != text.size() || closed != 0) {
+            if (std::fclose(file) != 0 || written != text.size()) {
                 dumped.erase(name);
-                std::fprintf(stderr, "[gpu] incomplete write to dump file %s (%zu of %zu bytes, close status %d)\n", name.c_str(), written, text.size(), closed);
+                std::fprintf(stderr, "[gpu] incomplete write to dump file %s (%zu of %zu bytes)\n", name.c_str(), written, text.size());
             }
         } else {
             dumped.erase(name);

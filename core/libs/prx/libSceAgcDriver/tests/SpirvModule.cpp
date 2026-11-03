@@ -583,9 +583,54 @@ void testInstructionLengthBounds() {
         threw = true;
     }
     check(threw, "an instruction exceeding 65535 words did not throw");
+
+    bool threwType = false;
+    try {
+        module.EmitTypeDeclaration(large);
+    } catch (const std::runtime_error&) {
+        threwType = true;
+    }
+    check(threwType, "EmitTypeDeclaration exceeding 65535 words did not throw");
+
+    bool threwGlobal = false;
+    try {
+        module.EmitGlobalVariable(large);
+    } catch (const std::runtime_error&) {
+        threwGlobal = true;
+    }
+    check(threwGlobal, "EmitGlobalVariable exceeding 65535 words did not throw");
+
+    bool threwAddFunc = false;
+    try {
+        module.AddFunction(large);
+    } catch (const std::runtime_error&) {
+        threwAddFunc = true;
+    }
+    check(threwAddFunc, "AddFunction exceeding 65535 words did not throw");
+
+    SpirvModule maxValidModule;
+    std::vector<std::uint32_t> maxValid(65535, spv::OpNop);
+    bool threwMax = false;
+    try {
+        maxValidModule.EmitFunctionInstruction(maxValid);
+    } catch (const std::runtime_error&) {
+        threwMax = true;
+    }
+    check(!threwMax, "an instruction with exactly 65535 words threw unexpectedly");
 }
 
 void testDeferredPhiValidation() {
+    SpirvModule emptyModule;
+    check(!emptyModule.HasPendingDeferredPhis(), "empty module reported pending deferred phis");
+    check(emptyModule.PendingDeferredPhiCount() == 0u, "empty module reported non-zero pending phi count");
+    bool threwEmpty = false;
+    try {
+        emptyModule.PatchDeferredPhi({0}, 0, 1u, 2u);
+    } catch (const std::runtime_error&) {
+        threwEmpty = true;
+    }
+    check(threwEmpty, "PatchDeferredPhi on empty module did not throw");
+
     SpirvModule module;
     module.AddFunction(spv::OpNop);
     bool threwNop = false;
@@ -616,7 +661,20 @@ void testDeferredPhiValidation() {
 
     SpirvModule moduleCount;
     const auto deferred = moduleCount.AddDeferredPhi(1u, 2u, 1);
+    check(moduleCount.HasPendingDeferredPhis(), "module should report pending deferred phis");
+    check(moduleCount.PendingDeferredPhiCount() == 1u, "pending phi count should be 1");
+    bool threwFinalizeEarly = false;
+    try {
+        static_cast<void>(moduleCount.Finalize());
+    } catch (const std::runtime_error&) {
+        threwFinalizeEarly = true;
+    }
+    check(threwFinalizeEarly, "Finalize with pending deferred phis did not throw");
+
     moduleCount.PatchDeferredPhi(deferred, 0, 10u, 20u);
+    check(!moduleCount.HasPendingDeferredPhis(), "module should report no pending deferred phis after patch");
+    check(moduleCount.PendingDeferredPhiCount() == 0u, "pending phi count should be 0 after patch");
+
     bool threwExcess = false;
     try {
         moduleCount.PatchDeferredPhi(deferred, 0, 10u, 20u);

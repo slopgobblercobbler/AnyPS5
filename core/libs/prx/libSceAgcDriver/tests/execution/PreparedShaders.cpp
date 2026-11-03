@@ -311,6 +311,26 @@ void FailureCapture(AgcDriver::VulkanDevice& device) {
     retriedFile.close();
     std::filesystem::remove_all(retryDirectory);
     Require(retriedText.str() == RequestSerializer{}.Serialize(request), "retried dump file contents do not match serialized request");
+#ifdef _WIN32
+    Require(_putenv_s("APS5_DUMP_SHADERS", "0x99999999") == 0, "cannot set filtered shader capture");
+#else
+    Require(setenv("APS5_DUMP_SHADERS", "0x99999999", 1) == 0, "cannot set filtered shader capture");
+#endif
+    Require(AgcDriver::DriverDetail::Driver::dumpRequest(request.shader.codeAddress, request, "_filtered").empty(), "unselected shader address was not filtered");
+#ifdef _WIN32
+    Require(_putenv_s("APS5_DUMP_SHADERS", "0x1111,0x12345cafe") == 0, "cannot set multi-filter shader capture");
+#else
+    Require(setenv("APS5_DUMP_SHADERS", "0x1111,0x12345cafe", 1) == 0, "cannot set multi-filter shader capture");
+#endif
+    const auto filteredAllowedPath = AgcDriver::DriverDetail::Driver::dumpRequest(request.shader.codeAddress, request, "_selected");
+    Require(!filteredAllowedPath.empty(), "selected shader address was unexpectedly filtered");
+    Require(std::filesystem::exists(filteredAllowedPath), "selected shader dump file was not created");
+    std::filesystem::remove(filteredAllowedPath);
+#ifdef _WIN32
+    Require(_putenv_s("APS5_DUMP_SHADERS", "1") == 0, "cannot restore shader capture");
+#else
+    Require(setenv("APS5_DUMP_SHADERS", "1", 1) == 0, "cannot restore shader capture");
+#endif
     const char* previousSkipLimit = std::getenv("APS5_SKIP_REQUEST_DUMPS");
     const std::string savedSkipLimit = previousSkipLimit != nullptr ? previousSkipLimit : "";
 #ifdef _WIN32
@@ -989,7 +1009,7 @@ public:
         std::string text;
         char buffer[4096];
         for (std::size_t read = 0; (read = std::fread(buffer, 1, sizeof(buffer), file)) != 0;) text.append(buffer, read);
-        std::fclose(file);
+        Require(std::fclose(file) == 0, "cannot close redirected stderr capture file");
         std::fwrite(text.data(), 1, text.size(), stderr);
         return text;
     }

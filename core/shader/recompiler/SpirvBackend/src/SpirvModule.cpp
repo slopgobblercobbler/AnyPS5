@@ -87,7 +87,7 @@ void SpirvModule::EmitFunctionInstruction(std::vector<std::uint32_t> words) {
 }
 
 std::vector<std::uint32_t> SpirvModule::Finalize() const {
-    if (unpatchedPhiIncomings != 0) {
+    if (!pendingDeferredPhis.empty() || unpatchedPhiIncomings != 0) {
         throw std::runtime_error("SpirvModule::Finalize called with unpatched OpPhi incoming pairs");
     }
     if (inHelperFunction) throw std::runtime_error("SpirvModule::Finalize called inside a helper function");
@@ -279,6 +279,9 @@ SpirvDeferredPhi SpirvModule::AddDeferredPhi(std::uint32_t type, std::uint32_t r
 }
 
 void SpirvModule::PatchDeferredPhi(SpirvDeferredPhi phi, std::size_t incoming, std::uint32_t value, std::uint32_t parent) {
+    if (pendingDeferredPhis.empty()) {
+        throw std::runtime_error("SpirvModule::PatchDeferredPhi called with no pending deferred phis");
+    }
     const auto it = pendingDeferredPhis.find(phi.wordOffset);
     if (it == pendingDeferredPhis.end()) {
         throw std::runtime_error("SpirvModule::PatchDeferredPhi target offset is not a pending deferred phi");

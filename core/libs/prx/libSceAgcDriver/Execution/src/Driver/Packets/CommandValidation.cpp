@@ -41,9 +41,12 @@ void Driver::dumpPackets(std::span<const std::uint32_t> commands, const std::uin
     char fileName[64];
     std::snprintf(fileName, sizeof(fileName), "rejected_submission_%d.bin", dumps++);
     if (FILE* file = std::fopen(fileName, "wb")) {
-        std::fwrite(commands.data(), sizeof(std::uint32_t), commands.size(), file);
-        std::fclose(file);
-        std::fprintf(stderr, "[gpu] rejected submission written to %s\n", fileName);
+        const auto written = std::fwrite(commands.data(), sizeof(std::uint32_t), commands.size(), file);
+        if (std::fclose(file) != 0 || written != commands.size()) {
+            std::fprintf(stderr, "[gpu] incomplete write to %s\n", fileName);
+        } else {
+            std::fprintf(stderr, "[gpu] rejected submission written to %s\n", fileName);
+        }
     }
 }
 

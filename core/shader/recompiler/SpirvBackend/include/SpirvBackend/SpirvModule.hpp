@@ -61,6 +61,9 @@ public:
     void EndHelperFunction();
     [[nodiscard]] SpirvDeferredPhi AddDeferredPhi(std::uint32_t type, std::uint32_t result, std::size_t incomingCount);
     void PatchDeferredPhi(SpirvDeferredPhi phi, std::size_t incoming, std::uint32_t value, std::uint32_t parent);
+    [[nodiscard]] bool HasPendingDeferredPhis() const noexcept { return !pendingDeferredPhis.empty(); }
+    [[nodiscard]] std::size_t PendingDeferredPhiCount() const noexcept { return pendingDeferredPhis.size(); }
+    [[nodiscard]] const std::map<std::size_t, std::pair<std::size_t, std::size_t>>& PendingDeferredPhis() const noexcept { return pendingDeferredPhis; }
 
     template<typename... TOperands>
     std::uint32_t Type(std::uint32_t opcode, const TOperands&... operands) {

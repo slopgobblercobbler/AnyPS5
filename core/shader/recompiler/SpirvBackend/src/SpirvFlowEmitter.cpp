@@ -800,6 +800,10 @@ void PatchStructuredPhis(SpirvValueEmitContext& ctx, StructuredFunctionState& fu
             if (found == functionState.blockExitLabels.end()) {
                 ctx.Fail(*deferred.instruction, "has a predecessor that was not emitted");
             }
+            const auto& pendingDeferredPhis = ctx.state.module.PendingDeferredPhis();
+            if (pendingDeferredPhis.empty()) {
+                ctx.Fail(*deferred.instruction, "has no pending deferred phis in module");
+            }
             ctx.state.module.PatchDeferredPhi(deferred.phi, index, lane.Def(deferred.instruction->Argument(index)), found->second);
         }
     }
