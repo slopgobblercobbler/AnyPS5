@@ -106,6 +106,10 @@ int main() {
     for (const int nice : {-25, -5, 5, 10, 25, 99, -99}) {
         *__error_nid_postfix() = 0;
         Require(nice < 0 ? setpriority_nid_postfix(PrioProcess, 0, nice) == -1 && *__error_nid_postfix() == 13 : setpriority_nid_postfix(PrioProcess, 0, nice) == 0);
+        *__error_nid_postfix() = 0;
+        Require(nice < 0 ? setpriority_nid_postfix(PrioGroup, 0, nice) == -1 && *__error_nid_postfix() == 13 : setpriority_nid_postfix(PrioGroup, 0, nice) == 0);
+        *__error_nid_postfix() = 0;
+        Require(nice < 0 ? setpriority_nid_postfix(PrioUser, 0, nice) == -1 && *__error_nid_postfix() == 13 : setpriority_nid_postfix(PrioUser, 0, nice) == 0);
         Require(getpriority_nid_postfix(PrioProcess, 0) == 0);
         Require(getpriority_nid_postfix(PrioProcess, self) == 0 && getpriority_nid_postfix(PrioGroup, 0) == 0 && getpriority_nid_postfix(PrioUser, 0) == 0);
     }
