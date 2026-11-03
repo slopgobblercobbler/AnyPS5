@@ -568,12 +568,12 @@ bool IoctlRequestMalformed(std::uint64_t request) {
 
 int Ioctl(int fd, std::uint64_t request, void* argument) {
     if (IoctlRequestMalformed(request)) return Fail(GuestEnotty);
+    const auto kind = Classify(fd, "ioctl");
+    if (!kind) return Fail(GuestEbadf);
     if (File::IsVirtualDirectoryDescriptor(fd)) return Fail(GuestEinval);
     const auto command = static_cast<std::uint32_t>(request);
     const std::uint32_t length = (command >> 16) & 0x1fff;
     if ((command & RequestIn) && length != 0 && argument == nullptr) return Fail(GuestEfault);
-    const auto kind = Classify(fd, "ioctl");
-    if (!kind) return Fail(GuestEbadf);
     if (command == CloseOnExecRequest || command == KeepOnExecRequest) {
         SetCloseOnExec(fd, command == CloseOnExecRequest);
         return 0;

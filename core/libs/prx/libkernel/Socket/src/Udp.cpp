@@ -1748,11 +1748,16 @@ int APS5_VABI ioctl_nid_postfix(int descriptor, std::uint64_t request, void* arg
     if (request != 0x8004667e && request != 0x4004667f) return Fail(25);
     std::lock_guard lock(socket->modeMutex);
     if (request == 0x4004667f && socket->receiveShut) {
-        *static_cast<int*>(argument) = 0;
+        int zero = 0;
+        if (!GuestCopyOut_nid_no_patch(argument, &zero, sizeof(zero))) return Fail(14);
         return 0;
     }
     unsigned long value = 0;
-    if (request == 0x8004667e) value = *static_cast<int*>(argument) != 0;
+    if (request == 0x8004667e) {
+        int input = 0;
+        if (!GuestCopyIn_nid_no_patch(&input, argument, sizeof(input))) return Fail(14);
+        value = input != 0;
+    }
 #ifdef _WIN32
     const auto result = ioctlsocket(socket->value, request == 0x8004667e ? FIONBIO : FIONREAD, &value);
 #else
@@ -1762,7 +1767,10 @@ int APS5_VABI ioctl_nid_postfix(int descriptor, std::uint64_t request, void* arg
 #endif
     if (result) return Fail(NativeError());
     if (request == 0x8004667e) socket->options.nonblocking = value != 0;
-    if (request == 0x4004667f) *static_cast<int*>(argument) = static_cast<int>(value);
+    if (request == 0x4004667f) {
+        int available = static_cast<int>(value);
+        if (!GuestCopyOut_nid_no_patch(argument, &available, sizeof(available))) return Fail(14);
+    }
     return 0;
 }
 int APS5_VABI _ioctl_nid_postfix(int descriptor, std::uint64_t request, void* argument) {
