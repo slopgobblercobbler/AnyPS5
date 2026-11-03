@@ -72,9 +72,23 @@ static constexpr std::uint64_t KeepOnExecRequest = 0x20006602;
 static constexpr std::uint64_t MalformedRequests[] = {0, 123, 0x5401, 0x5413, 0x40007468, 0x20087468, 0x00087468};
 static constexpr std::uint64_t IntegerArgumentRequest = 0x20046601;
 static constexpr std::uint64_t EmptyInputRequest = 0x80006601;
+static constexpr std::uint64_t SiocgifconfRequest = 0xc0106924;
 static constexpr int SceEbadf = static_cast<int>(0x80020009u);
 static constexpr int SceEinval = static_cast<int>(0x80020016u);
 static constexpr int SceEnotsup = static_cast<int>(0x8002002du);
+
+struct GuestIfconf {
+    std::int32_t ifc_len;
+    std::int32_t _pad;
+    void* ifcu_buf;
+};
+static_assert(sizeof(GuestIfconf) == 16);
+
+struct GuestIfreq {
+    char ifr_name[16];
+    unsigned char ifru_addr[16];
+};
+static_assert(sizeof(GuestIfreq) == 32);
 
 struct GuestLock {
     std::int64_t start;
@@ -220,6 +234,24 @@ static void SocketsKeepTheirPath() {
     RequireMalformedRequestsFail(socket);
     RequireFailure(ioctl_nid_postfix(socket, IntegerArgumentRequest, nullptr), GuestEfault);
     RequireFailure(ioctl_nid_postfix(socket, EmptyInputRequest, nullptr), GuestEfault);
+    RequireFailure(ioctl_nid_postfix(socket, ReadableRequest, nullptr), GuestEfault);
+    RequireFailure(ioctl_nid_postfix(socket, ReadableRequest, reinterpret_cast<void*>(std::uintptr_t{0x10})), GuestEfault);
+    RequireFailure(ioctl_nid_postfix(socket, NonblockingRequest, nullptr), GuestEfault);
+    RequireFailure(ioctl_nid_postfix(socket, NonblockingRequest, reinterpret_cast<void*>(std::uintptr_t{0x10})), GuestEfault);
+    RequireFailure(ioctl_nid_postfix(socket, SiocgifconfRequest, nullptr), GuestEfault);
+    RequireFailure(ioctl_nid_postfix(socket, SiocgifconfRequest, reinterpret_cast<void*>(std::uintptr_t{0x10})), GuestEfault);
+    GuestIfconf negativeIfc{-1, 0, nullptr};
+    RequireFailure(ioctl_nid_postfix(socket, SiocgifconfRequest, &negativeIfc), GuestEinval);
+    GuestIfconf nullBufferIfc{1024, 0, nullptr};
+    RequireFailure(ioctl_nid_postfix(socket, SiocgifconfRequest, &nullBufferIfc), GuestEfault);
+    GuestIfconf queryIfc{0, 0, nullptr};
+    Require(ioctl_nid_postfix(socket, SiocgifconfRequest, &queryIfc) == 0 && queryIfc.ifc_len >= 0);
+    std::vector<char> ifcBuffer(static_cast<std::size_t>(queryIfc.ifc_len > 0 ? queryIfc.ifc_len : 128));
+    GuestIfconf fetchIfc{static_cast<std::int32_t>(ifcBuffer.size()), 0, ifcBuffer.data()};
+    Require(ioctl_nid_postfix(socket, SiocgifconfRequest, &fetchIfc) == 0);
+    RequireFailure(ioctl_nid_postfix(-1, SiocgifconfRequest, nullptr), GuestEbadf);
+    RequireFailure(ioctl_nid_postfix(-1, NonblockingRequest, nullptr), GuestEbadf);
+    RequireFailure(ioctl_nid_postfix(-1, ReadableRequest, nullptr), GuestEbadf);
     for (const int descriptor : {closing, duplicate, socket}) Require(close_nid_postfix(descriptor) == 0);
     Require(sceKernelFcntl(socket, GetFlags) == SceEbadf);
     Require(sceKernelFcntl(-1, GetFlags) == SceEbadf);
@@ -281,6 +313,8 @@ static void FileFlagsRoundTrip() {
     RequireFailure(ioctl_nid_postfix(file, NonblockingRequest, reinterpret_cast<void*>(std::uintptr_t{0x10})), GuestEfault);
     RequireFailure(ioctl_nid_postfix(file, ReadableRequest, nullptr), GuestEfault);
     RequireFailure(ioctl_nid_postfix(file, ReadableRequest, reinterpret_cast<void*>(std::uintptr_t{0x10})), GuestEfault);
+    GuestIfconf fileIfc{0, 0, nullptr};
+    RequireFailure(ioctl_nid_postfix(file, SiocgifconfRequest, &fileIfc), GuestEnotty);
     Require(ThrowsWith([file] { int on = 1; ioctl_nid_postfix(file, AsyncRequest, &on); }, "ioctl: request 0x8004667D on a file is not implemented"));
 
     RequireFailure(fcntl_nid_postfix(file, DuplicateCommand, -1), GuestEinval);
