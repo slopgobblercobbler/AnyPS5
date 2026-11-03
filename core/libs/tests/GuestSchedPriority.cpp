@@ -82,6 +82,10 @@ int main() {
     RequireError(-1, self, 22);
     RequireSet(PrioProcess, 0, 0);
     RequireSet(PrioProcess, self, 5);
+    RequireSet(PrioGroup, 0, 0);
+    RequireSet(PrioGroup, self, 5);
+    RequireSet(PrioUser, 0, 0);
+    RequireSet(PrioUser, 0, 10);
     RequireSetError(PrioProcess, self, -20, 13);
     RequireSetError(PrioProcess, 0, -1, 13);
     RequireSetError(PrioGroup, 0, -1, 13);
@@ -91,6 +95,8 @@ int main() {
     RequireSetError(PrioProcess, self + 1, -5, 3);
     RequireSetError(3, 0, -5, 22);
     RequireSet(PrioProcess, self, 0);
+    RequireSet(PrioGroup, self, 0);
+    RequireSet(PrioUser, 0, 0);
     RequireSetError(PrioProcess, self + 1, 0, 3);
     RequireSetError(PrioProcess, -1, 0, 3);
     RequireSetError(PrioGroup, self + 1, 0, 3);
