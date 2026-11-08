@@ -1442,6 +1442,17 @@ if(BUILD_TESTING)
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libScePosixForWebKit>")
     endif()
 
+    add_test_executable(guest_kernel_flock_adv_tests tests/GuestKernelFlockAdv.cpp)
+    target_include_directories(guest_kernel_flock_adv_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(guest_kernel_flock_adv_tests PRIVATE libkernel libc)
+    configure_windows_unwind(guest_kernel_flock_adv_tests)
+    add_test(NAME guest_kernel_flock_adv COMMAND guest_kernel_flock_adv_tests)
+    set_tests_properties(guest_kernel_flock_adv PROPERTIES TIMEOUT 20)
+    if(WIN32)
+        set_tests_properties(guest_kernel_flock_adv PROPERTIES ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libkernel>")
+    endif()
+
     add_subdirectory(tests/floating_prefix)
 
     add_test_executable(MemoryPoolTest
