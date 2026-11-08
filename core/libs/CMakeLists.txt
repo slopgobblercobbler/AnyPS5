@@ -1364,6 +1364,17 @@ if(BUILD_TESTING)
     configure_windows_unwind(savedata_replace_file_failure_tests)
     add_test(NAME savedata_replace_file_failure COMMAND savedata_replace_file_failure_tests)
 
+    add_test_executable(guest_kernel_getitimer_tests tests/GuestKernelGetitimer.cpp)
+    target_include_directories(guest_kernel_getitimer_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(guest_kernel_getitimer_tests PRIVATE libkernel libc)
+    configure_windows_unwind(guest_kernel_getitimer_tests)
+    add_test(NAME guest_kernel_getitimer COMMAND guest_kernel_getitimer_tests)
+    set_tests_properties(guest_kernel_getitimer PROPERTIES TIMEOUT 20)
+    if(WIN32)
+        set_tests_properties(guest_kernel_getitimer PROPERTIES ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libkernel>")
+    endif()
+
     add_test_executable(guest_kernel_sys_ktimer_tests tests/GuestKernelSysKtimer.cpp)
     target_include_directories(guest_kernel_sys_ktimer_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(guest_kernel_sys_ktimer_tests PRIVATE libkernel_sys libkernel libc)
