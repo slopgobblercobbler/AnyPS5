@@ -423,3 +423,13 @@ endif()
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceAudioOut>")
     endif()
 
+    add_test_executable(guest_audio_out2_speaker_info_array_bounds_tests ${LIBS_INCLUDE_DIR}/tests/GuestAudioOut2SpeakerInfoArrayBounds.cpp)
+    target_include_directories(guest_audio_out2_speaker_info_array_bounds_tests PRIVATE ${LIBS_INCLUDE_DIR})
+    target_link_libraries(guest_audio_out2_speaker_info_array_bounds_tests PRIVATE libSceAudioOut libc)
+    configure_windows_unwind(guest_audio_out2_speaker_info_array_bounds_tests)
+    add_test(NAME guest_audio_out2_speaker_info_array_bounds COMMAND guest_audio_out2_speaker_info_array_bounds_tests)
+    if(WIN32)
+        set_tests_properties(guest_audio_out2_speaker_info_array_bounds PROPERTIES ENVIRONMENT_MODIFICATION
+            "PATH=path_list_prepend:$<TARGET_FILE_DIR:libSceAudioOut>")
+    endif()
+
